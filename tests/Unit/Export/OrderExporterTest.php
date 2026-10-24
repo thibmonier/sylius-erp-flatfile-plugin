@@ -28,6 +28,7 @@ final class OrderExporterTest extends TestCase
         self::assertSame(6, $result->lines);
         self::assertSame(array_key_first($depositor->files), $result->fileName);
         self::assertMatchesRegularExpression('/^orders-20261024T101500Z-[0-9a-f]{8}\.csv$/', (string) $result->fileName);
+        self::assertNotNull($result->fileName);
         self::assertSame(6 + 1, substr_count($depositor->files[$result->fileName], "\n"));
     }
 

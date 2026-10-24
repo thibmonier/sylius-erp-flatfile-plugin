@@ -36,9 +36,13 @@ final class ExportScenariosTest extends KernelTestCase
     {
         $this->connection()->rollBack();
         foreach (array_merge(glob($this->directory . '/.incoming/*') ?: [], glob($this->directory . '/*') ?: []) as $file) {
-            is_file($file) && unlink($file);
+            if (is_file($file)) {
+                unlink($file);
+            }
         }
-        is_dir($this->directory . '/.incoming') && rmdir($this->directory . '/.incoming');
+        if (is_dir($this->directory . '/.incoming')) {
+            rmdir($this->directory . '/.incoming');
+        }
         rmdir($this->directory);
         parent::tearDown();
     }
@@ -62,7 +66,7 @@ final class ExportScenariosTest extends KernelTestCase
         $content = (string) file_get_contents($this->directory . '/' . $result->fileName);
         self::assertStringStartsWith('order_number;webhook_id;', $content);
         self::assertSame(2, substr_count($content, ';' . OrderEvents::id(1) . ';'));
-        self::assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM tmonier_erp_flatfile_exported_event WHERE event_id = ?', [OrderEvents::id(1)]));
+        self::assertSame(1, $this->journalLines());
     }
 
     public function testAReplayedEventIsNotWrittenTwice(): void
@@ -97,7 +101,7 @@ final class ExportScenariosTest extends KernelTestCase
         } catch (ExchangeDirectoryUnavailable) {
         }
 
-        self::assertSame(0, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM tmonier_erp_flatfile_exported_event'));
+        self::assertSame(0, $this->journalLines());
         self::assertCount(1, $this->pending()->next(10));
     }
 
@@ -108,6 +112,13 @@ final class ExportScenariosTest extends KernelTestCase
         $this->record($event);
 
         self::assertSame([], $this->pending()->next(10));
+    }
+
+    private function journalLines(): int
+    {
+        $count = $this->connection()->fetchOne('SELECT COUNT(*) FROM tmonier_erp_flatfile_exported_event');
+
+        return is_numeric($count) ? (int) $count : -1;
     }
 
     private function exporter(string $directory): OrderExporter

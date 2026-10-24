@@ -13,6 +13,6 @@ final class CollectingLogger extends AbstractLogger
 
     public function log(mixed $level, string|\Stringable $message, array $context = []): void
     {
-        $this->records[] = ['level' => (string) $level, 'message' => (string) $message];
+        $this->records[] = ['level' => \is_scalar($level) ? (string) $level : '', 'message' => (string) $message];
     }
 }

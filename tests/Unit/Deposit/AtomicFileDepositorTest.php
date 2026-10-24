@@ -21,10 +21,16 @@ final class AtomicFileDepositorTest extends TestCase
     protected function tearDown(): void
     {
         foreach (array_merge(glob($this->directory . '/.incoming/*') ?: [], glob($this->directory . '/*') ?: []) as $file) {
-            is_file($file) && unlink($file);
+            if (is_file($file)) {
+                unlink($file);
+            }
         }
-        is_dir($this->directory . '/.incoming') && rmdir($this->directory . '/.incoming');
-        is_dir($this->directory) && rmdir($this->directory);
+        if (is_dir($this->directory . '/.incoming')) {
+            rmdir($this->directory . '/.incoming');
+        }
+        if (is_dir($this->directory)) {
+            rmdir($this->directory);
+        }
     }
 
     public function testAReaderOfTheDirectoryNeverSeesAPartialFile(): void
