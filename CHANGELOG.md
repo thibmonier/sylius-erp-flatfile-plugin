@@ -5,7 +5,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-10-25
+## [0.1.0] - 2026-10-24
 
 ### Added
 - Contract of the order file: UTF-8, `;` separator, header, one line per order line, amounts in the minor unit, one uniquely named file per batch.
