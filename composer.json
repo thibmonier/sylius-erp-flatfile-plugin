@@ -1,0 +1,95 @@
+{
+    "name": "tmonier/sylius-erp-flatfile-plugin",
+    "type": "sylius-plugin",
+    "description": "Flat-file exchange with an ERP for Sylius 2: orders exported as CSV files (documented contract, UTF-8, \";\" separator, minor-unit integers) from the events of the webhook outbox, deposited atomically in an exchange directory",
+    "keywords": [
+        "sylius",
+        "sylius-plugin",
+        "ecommerce",
+        "erp",
+        "csv",
+        "flat-file",
+        "export",
+        "b2b"
+    ],
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "sylius/sylius": "^2.2",
+        "symfony/clock": "^6.4 || ^7.4 || ^8.0",
+        "symfony/console": "^6.4 || ^7.4 || ^8.0",
+        "tmonier/sylius-webhook-outbox-plugin": "^1.0"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "phpstan/phpstan-doctrine": "^2.0",
+        "phpstan/phpstan-webmozart-assert": "^2.0",
+        "phpunit/phpunit": "^10.5",
+        "rector/rector": "^2.0",
+        "sylius-labs/coding-standard": "^4.4",
+        "sylius/test-application": "^2.0.0@alpha",
+        "symfony/browser-kit": "^6.4 || ^7.4 || ^8.0",
+        "symfony/css-selector": "^6.4 || ^7.4 || ^8.0",
+        "symfony/debug-bundle": "^6.4 || ^7.4 || ^8.0",
+        "symfony/dom-crawler": "^6.4 || ^7.4 || ^8.0",
+        "symfony/dotenv": "^6.4 || ^7.4 || ^8.0",
+        "symfony/http-client": "^6.4 || ^7.4 || ^8.0",
+        "symfony/intl": "^6.4 || ^7.4 || ^8.0",
+        "symfony/runtime": "^6.4 || ^7.4 || ^8.0",
+        "symfony/web-profiler-bundle": "^6.4 || ^7.4 || ^8.0",
+        "symfony/webpack-encore-bundle": "^2.2"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": false,
+            "php-http/discovery": false,
+            "phpstan/extension-installer": true,
+            "symfony/flex": true,
+            "symfony/runtime": true
+        }
+    },
+    "extra": {
+        "branch-alias": {
+            "dev-main": "0.1-dev"
+        },
+        "symfony": {
+            "require": "^7.4"
+        },
+        "public-dir": "vendor/sylius/test-application/public"
+    },
+    "autoload": {
+        "psr-4": {
+            "Tmonier\\SyliusErpFlatfilePlugin\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\Tmonier\\SyliusErpFlatfilePlugin\\": [
+                "tests/",
+                "tests/TestApplication/src/"
+            ]
+        }
+    },
+    "scripts": {
+        "database-reset": [
+            "vendor/bin/console doctrine:database:drop --force --if-exists",
+            "vendor/bin/console doctrine:database:create",
+            "vendor/bin/console doctrine:migration:migrate -n",
+            "vendor/bin/console sylius:fixtures:load -n"
+        ],
+        "frontend-clear": [
+            "cd vendor/sylius/test-application && yarn install && yarn build",
+            "vendor/bin/console assets:install"
+        ],
+        "test-app-init": [
+            "@database-reset",
+            "@frontend-clear"
+        ]
+    },
+    "authors": [
+        {
+            "name": "Thibaut Monier"
+        }
+    ]
+}

@@ -1,0 +1,9 @@
+parameters:
+    level: max
+    reportUnmatchedIgnoredErrors: false
+    paths:
+        - src
+        - tests/Functional
+        - tests/Unit
+        - tests/Integration
+        - tests/Support

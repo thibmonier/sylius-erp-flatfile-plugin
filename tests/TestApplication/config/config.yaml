@@ -1,0 +1,4 @@
+imports:
+    - { resource: "@TmonierSyliusWebhookOutboxPlugin/config/config.yaml" }
+    - { resource: "@TmonierSyliusErpFlatfilePlugin/config/config.yaml" }
+    - { resource: "dbal_savepoints.php" }
