@@ -108,6 +108,24 @@ Lisez les fichiers dont le nom se termine par `.csv` dans le répertoire d'écha
 - La table de journal (`tmonier_erp_flatfile_exported_event`) n'a pas de clé étrangère vers l'outbox : purger l'outbox ne la touche pas.
 - Aucun ERP n'est nommé, testé ni pris en charge : le plugin écrit seulement des fichiers.
 
+
+## Import des prix et des stocks
+
+Le plugin importe aussi deux types de fichiers plats depuis le répertoire d'échange, `prices-*.csv` et `stock-*.csv` :
+
+```bash
+bin/console tmonier:erp-flatfile:import-batches
+```
+
+- **Prix** `variant_code;price_minor;currency;channel` : un prix par variante et par canal (`ChannelPricing`, sans groupe de clients). **Tout ou rien** : une ligne invalide rejette le lot et rien n'est écrit. La devise doit être la devise de base du canal.
+- **Stock** `variant_code;on_hand` : la quantité en stock, en valeur absolue. La quantité réservée (`on_hold`) n'est jamais modifiée. **Ligne par ligne** : une ligne valide est appliquée, une ligne invalide est signalée. Une quantité inférieure à la quantité réservée est refusée (`below_on_hold`).
+- Les deux : UTF-8 sans marque d'ordre des octets, séparateur `;`, en-tête du contrat, entiers, saut de ligne final (un fichier tronqué est refusé).
+- Un **lot** est son nom de fichier et le SHA-256 de son contenu. Un lot déjà traité est ignoré (`duplicate`) : rien n'est écrit deux fois. Le journal (`tmonier_erp_flatfile_import_batch`) garde une ligne par lot, avec son résultat et son rapport.
+- Une fois importé, un fichier est déplacé dans le sous-répertoire `processed` du répertoire d'échange (un renommage, donc atomique). Un fichier du même nom déjà présent est conservé : le nouveau est préfixé par le début de son empreinte.
+- Motifs du rapport : `columns`, `duplicate`, `unknown_variant`, `channel`, `currency`, `price`, `on_hand`, `below_on_hold` ; pour un fichier entier (ligne 0) : `empty`, `encoding`, `truncated`, `header`.
+
+Hors périmètre : pas d'API, pas de rétention (le journal et les fichiers traités restent jusqu'à leur suppression par l'exploitant), pas de prix par groupe de clients, pas de logique de réservation (la quantité réservée n'est que lue).
+
 ## Tests et qualité
 
 ```bash

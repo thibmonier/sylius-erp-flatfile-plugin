@@ -35,10 +35,16 @@ final class ExchangeDirectoryImporterTest extends TestCase
     protected function tearDown(): void
     {
         foreach (array_merge(glob($this->directory . '/processed/*') ?: [], glob($this->directory . '/*') ?: []) as $file) {
-            is_file($file) && unlink($file);
+            if (is_file($file)) {
+                unlink($file);
+            }
         }
-        is_dir($this->directory . '/processed') && rmdir($this->directory . '/processed');
-        is_dir($this->directory) && chmod($this->directory, 0777);
+        if (is_dir($this->directory . '/processed')) {
+            rmdir($this->directory . '/processed');
+        }
+        if (is_dir($this->directory)) {
+            chmod($this->directory, 0777);
+        }
         rmdir($this->directory);
     }
 
@@ -49,12 +55,12 @@ final class ExchangeDirectoryImporterTest extends TestCase
 
         $reports = $this->importer()->importPending();
 
-        self::assertSame(['prices-20261025.csv', 'stock-20261025.csv'], array_map(static fn ($report): string => $report->name, $reports));
-        self::assertSame([BatchOutcome::Applied, BatchOutcome::Applied], array_map(static fn ($report): BatchOutcome => $report->outcome, $reports));
+        self::assertSame(['prices-20261025.csv', 'stock-20261025.csv'], array_map(static fn (\Tmonier\SyliusErpFlatfilePlugin\Import\ImportReport $report): string => $report->name, $reports));
+        self::assertSame([BatchOutcome::Applied, BatchOutcome::Applied], array_map(static fn (\Tmonier\SyliusErpFlatfilePlugin\Import\ImportReport $report): BatchOutcome => $report->outcome, $reports));
         self::assertSame(['MUG-RED@WEB' => 1250], $this->catalog->prices);
         self::assertSame(['MUG-RED' => 40], $this->catalog->onHand);
         self::assertSame([], glob($this->directory . '/*.csv'), 'moved away');
-        self::assertSame(['prices-20261025.csv', 'stock-20261025.csv'], array_map('basename', glob($this->directory . '/processed/*.csv') ?: []));
+        self::assertSame(['prices-20261025.csv', 'stock-20261025.csv'], array_map(basename(...), glob($this->directory . '/processed/*.csv') ?: []));
     }
 
     public function testTheFilesOfOrdersAndTheAcknowledgementsAreLeftAlone(): void

@@ -9,11 +9,16 @@ use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Sylius\Component\Core\Model\Channel;
+use Sylius\Component\Core\Model\ChannelInterface;
+use Sylius\Component\Core\Model\ChannelPricingInterface;
 use Sylius\Component\Core\Model\Product;
 use Sylius\Component\Core\Model\ProductVariant;
+use Sylius\Component\Core\Model\ProductVariantInterface;
+use Sylius\Component\Core\Repository\ProductVariantRepositoryInterface;
 use Sylius\Component\Currency\Model\Currency;
 use Sylius\Component\Locale\Model\Locale;
-use Sylius\Component\Resource\Factory\FactoryInterface;
+use Sylius\Resource\Doctrine\Persistence\RepositoryInterface;
+use Sylius\Resource\Factory\FactoryInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\Clock\MockClock;
 use Tmonier\SyliusErpFlatfilePlugin\Entity\ImportedBatch;
@@ -68,7 +73,7 @@ final class ImportScenariosTest extends KernelTestCase
         $report = $this->importer()->import(ImportKind::Stock, 'stock-1.csv', "variant_code;on_hand\nMUG-RED;40\nMUG-NOPE;1\n");
 
         self::assertSame(BatchOutcome::Partial, $report->outcome);
-        self::assertSame([40, 3], array_map('intval', array_values((array) $this->connection()->fetchAssociative('SELECT on_hand, on_hold FROM sylius_product_variant WHERE code = ?', ['MUG-RED']))));
+        self::assertSame([40, 3], array_map(static fn (mixed $value): int => is_numeric($value) ? (int) $value : -1, array_values((array) $this->connection()->fetchAssociative('SELECT on_hand, on_hold FROM sylius_product_variant WHERE code = ?', ['MUG-RED']))));
     }
 
     public function testOneInvalidPriceLeavesTheDatabaseUntouched(): void
@@ -90,9 +95,9 @@ final class ImportScenariosTest extends KernelTestCase
         self::assertSame(BatchOutcome::Duplicate, $again->outcome);
         $row = $this->connection()->fetchAssociative('SELECT * FROM tmonier_erp_flatfile_import_batch WHERE name = ?', ['prices-1.csv']);
         self::assertIsArray($row);
-        self::assertSame(1, (int) $this->connection()->fetchOne('SELECT COUNT(*) FROM tmonier_erp_flatfile_import_batch'));
-        self::assertSame([2, 0, 1, 'rejected'], [(int) $row['lines_read'], (int) $row['lines_applied'], (int) $row['lines_rejected'], $row['outcome']]);
-        self::assertStringContainsString('unknown_variant', (string) $row['report']);
+        self::assertSame(1, $this->number($this->connection()->fetchOne('SELECT COUNT(*) FROM tmonier_erp_flatfile_import_batch')));
+        self::assertSame([2, 0, 1, 'rejected'], [$this->number($row['lines_read']), $this->number($row['lines_applied']), $this->number($row['lines_rejected']), $row['outcome']]);
+        self::assertStringContainsString('unknown_variant', \is_string($row['report']) ? $row['report'] : '');
     }
 
     public function testTheDatabaseRefusesASecondLineForTheSameNameAndChecksum(): void
@@ -105,7 +110,7 @@ final class ImportScenariosTest extends KernelTestCase
 
     private function importer(): BatchImporter
     {
-        $catalog = new DoctrineCatalog($this->entityManager(), $this->factory(), $this->repository('sylius.repository.product_variant'), $this->repository('sylius.repository.channel'));
+        $catalog = new DoctrineCatalog($this->entityManager(), $this->factory(), $this->variants(), $this->channels());
 
         return new BatchImporter($catalog, $catalog, new DbalImportJournal($this->connection(), new MockClock('2026-10-25T10:00:00Z')));
     }
@@ -116,7 +121,7 @@ final class ImportScenariosTest extends KernelTestCase
         $this->entityManager()->clear();
         $rows = $this->connection()->fetchAllAssociative('SELECT cp.channel_code, cp.price FROM sylius_channel_pricing cp JOIN sylius_product_variant v ON v.id = cp.product_variant_id WHERE v.code = ? ORDER BY cp.channel_code', [$variantCode]);
 
-        return array_column(array_map(static fn (array $row): array => [(string) $row['channel_code'], (int) $row['price']], $rows), 1, 0);
+        return array_column(array_map(fn (array $row): array => [\is_string($row['channel_code']) ? $row['channel_code'] : '', $this->number($row['price'])], $rows), 1, 0);
     }
 
     private function catalogue(): void
@@ -154,6 +159,7 @@ final class ImportScenariosTest extends KernelTestCase
         $entityManager->clear();
     }
 
+    /** @return FactoryInterface<ChannelPricingInterface> */
     private function factory(): FactoryInterface
     {
         $factory = self::getContainer()->get('sylius.factory.channel_pricing');
@@ -162,12 +168,27 @@ final class ImportScenariosTest extends KernelTestCase
         return $factory;
     }
 
-    private function repository(string $id): object
+    /** @return ProductVariantRepositoryInterface<ProductVariantInterface> */
+    private function variants(): ProductVariantRepositoryInterface
     {
-        $repository = self::getContainer()->get($id);
-        self::assertIsObject($repository);
+        $repository = self::getContainer()->get('sylius.repository.product_variant');
+        self::assertInstanceOf(ProductVariantRepositoryInterface::class, $repository);
 
         return $repository;
+    }
+
+    /** @return RepositoryInterface<ChannelInterface> */
+    private function channels(): RepositoryInterface
+    {
+        $repository = self::getContainer()->get('sylius.repository.channel');
+        self::assertInstanceOf(RepositoryInterface::class, $repository);
+
+        return $repository;
+    }
+
+    private function number(mixed $value): int
+    {
+        return is_numeric($value) ? (int) $value : -1;
     }
 
     private function connection(): Connection

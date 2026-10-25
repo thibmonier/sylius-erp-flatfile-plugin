@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- Import of prices (per channel, all or nothing) and of stock (absolute quantity on hand, line by line) from `prices-*.csv` and `stock-*.csv` files of the exchange directory, with a report of the rejected lines and a journal of the batches (`tmonier_erp_flatfile_import_batch`, migration). A batch is its file name and its checksum: a batch already processed is ignored. Command `tmonier:erp-flatfile:import-batches`.
+
 ## [0.1.0] - 2026-10-24
 
 ### Added
