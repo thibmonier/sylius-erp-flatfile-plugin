@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-25
+
 ### Added
 - Import of prices (per channel, all or nothing) and of stock (absolute quantity on hand, line by line) from `prices-*.csv` and `stock-*.csv` files of the exchange directory, with a report of the rejected lines and a journal of the batches (`tmonier_erp_flatfile_import_batch`, migration). A batch is its file name and its checksum: a batch already processed is ignored. Command `tmonier:erp-flatfile:import-batches`.
 
@@ -16,5 +18,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - Atomic deposit in the exchange directory (provisional file in `.incoming`, then rename): a reader never sees a partial file.
 - Journal of the exported events (`tmonier_erp_flatfile_exported_event`, the event id is the primary key): an event is exported once; an unavailable directory leaves no file and the events stay to export.
 
-[Unreleased]: https://github.com/thibmonier/sylius-erp-flatfile-plugin/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/thibmonier/sylius-erp-flatfile-plugin/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/thibmonier/sylius-erp-flatfile-plugin/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/thibmonier/sylius-erp-flatfile-plugin/releases/tag/v0.1.0
