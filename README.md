@@ -108,6 +108,24 @@ Read the files whose name ends with `.csv` in the exchange directory; ignore the
 - The journal table (`tmonier_erp_flatfile_exported_event`) has no foreign key to the outbox: purging the outbox does not touch it.
 - No ERP is named, tested or supported: the plugin only writes files.
 
+
+## Importing prices and stock
+
+The plugin also imports two kinds of flat files from the exchange directory, `prices-*.csv` and `stock-*.csv`:
+
+```bash
+bin/console tmonier:erp-flatfile:import-batches
+```
+
+- **Prices** `variant_code;price_minor;currency;channel`: one price per variant and channel (`ChannelPricing`, no customer group). **All or nothing**: one invalid line rejects the batch and nothing is written. The currency must be the base currency of the channel.
+- **Stock** `variant_code;on_hand`: the quantity on hand, as an absolute value. The quantity on hold is never touched. **Line by line**: a valid line is applied, an invalid one is reported. A quantity below the quantity on hold is refused (`below_on_hold`).
+- Both: UTF-8 without byte order mark, `;` separator, the header of the contract, integers, a line break at the end of the file (a file cut in the middle is refused).
+- A **batch** is its file name and the SHA-256 of its content. A batch already processed is ignored (`duplicate`): nothing is written twice. The journal (`tmonier_erp_flatfile_import_batch`) keeps one line per batch, with its outcome and its report.
+- Once imported, a file moves to the `processed` subdirectory of the exchange directory (a rename, so atomic). A file of the same name already there is kept: the new one is prefixed with the start of its checksum.
+- Reasons in the report: `columns`, `duplicate`, `unknown_variant`, `channel`, `currency`, `price`, `on_hand`, `below_on_hold`; for a whole file (line 0): `empty`, `encoding`, `truncated`, `header`.
+
+Not done: no API, no retention (the journal and the processed files are kept until the operator removes them), no customer group prices, no reservation logic (the quantity on hold is only read).
+
 ## Tests and quality
 
 ```bash
