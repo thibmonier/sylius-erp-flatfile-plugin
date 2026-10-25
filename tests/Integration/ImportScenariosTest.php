@@ -59,34 +59,34 @@ final class ImportScenariosTest extends KernelTestCase
     {
         $importer = $this->importer();
 
-        $first = $importer->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "MUG-RED;1250;EUR;WEB\nMUG-RED;1100;EUR;B2B\n");
-        $second = $importer->import(ImportKind::Prices, 'prices-2.csv', self::PRICES . "MUG-RED;1300;EUR;WEB\n");
+        $first = $importer->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "ERP-MUG-RED;1250;EUR;ERP_WEB\nERP-MUG-RED;1100;EUR;ERP_B2B\n");
+        $second = $importer->import(ImportKind::Prices, 'prices-2.csv', self::PRICES . "ERP-MUG-RED;1300;EUR;ERP_WEB\n");
 
         self::assertSame([BatchOutcome::Applied, BatchOutcome::Applied], [$first->outcome, $second->outcome]);
-        self::assertSame(['B2B' => 1100, 'WEB' => 1300], $this->prices('MUG-RED'));
+        self::assertSame(['ERP_B2B' => 1100, 'ERP_WEB' => 1300], $this->prices('ERP-MUG-RED'));
     }
 
     public function testTheStockIsAbsoluteAndTheHeldQuantityIsNotTouched(): void
     {
-        $this->connection()->executeStatement('UPDATE sylius_product_variant SET on_hand = 5, on_hold = 3 WHERE code = ?', ['MUG-RED']);
+        $this->connection()->executeStatement('UPDATE sylius_product_variant SET on_hand = 5, on_hold = 3 WHERE code = ?', ['ERP-MUG-RED']);
 
-        $report = $this->importer()->import(ImportKind::Stock, 'stock-1.csv', "variant_code;on_hand\nMUG-RED;40\nMUG-NOPE;1\n");
+        $report = $this->importer()->import(ImportKind::Stock, 'stock-1.csv', "variant_code;on_hand\nERP-MUG-RED;40\nMUG-NOPE;1\n");
 
         self::assertSame(BatchOutcome::Partial, $report->outcome);
-        self::assertSame([40, 3], array_map(static fn (mixed $value): int => is_numeric($value) ? (int) $value : -1, array_values((array) $this->connection()->fetchAssociative('SELECT on_hand, on_hold FROM sylius_product_variant WHERE code = ?', ['MUG-RED']))));
+        self::assertSame([40, 3], array_map(static fn (mixed $value): int => is_numeric($value) ? (int) $value : -1, array_values((array) $this->connection()->fetchAssociative('SELECT on_hand, on_hold FROM sylius_product_variant WHERE code = ?', ['ERP-MUG-RED']))));
     }
 
     public function testOneInvalidPriceLeavesTheDatabaseUntouched(): void
     {
-        $report = $this->importer()->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "MUG-RED;1250;EUR;WEB\nMUG-RED;900;USD;B2B\n");
+        $report = $this->importer()->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "ERP-MUG-RED;1250;EUR;ERP_WEB\nERP-MUG-RED;900;USD;ERP_B2B\n");
 
         self::assertSame(BatchOutcome::Rejected, $report->outcome);
-        self::assertSame([], $this->prices('MUG-RED'));
+        self::assertSame([], $this->prices('ERP-MUG-RED'));
     }
 
     public function testABatchIsRecordedOnceWithItsReportAndIgnoredWhenItComesAgain(): void
     {
-        $content = self::PRICES . "MUG-RED;1250;EUR;WEB\nNOPE;10;EUR;WEB\n";
+        $content = self::PRICES . "ERP-MUG-RED;1250;EUR;ERP_WEB\nNOPE;10;EUR;ERP_WEB\n";
         $importer = $this->importer();
         $first = $importer->import(ImportKind::Prices, 'prices-1.csv', $content);
         $again = $importer->import(ImportKind::Prices, 'prices-1.csv', $content);
@@ -102,7 +102,7 @@ final class ImportScenariosTest extends KernelTestCase
 
     public function testTheDatabaseRefusesASecondLineForTheSameNameAndChecksum(): void
     {
-        $report = $this->importer()->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "NOPE;1;EUR;WEB\n");
+        $report = $this->importer()->import(ImportKind::Prices, 'prices-1.csv', self::PRICES . "NOPE;1;EUR;ERP_WEB\n");
 
         $this->expectException(UniqueConstraintViolationException::class);
         (new DbalImportJournal($this->connection(), new MockClock('2026-10-25T10:00:00Z')))->record($report);
@@ -127,13 +127,12 @@ final class ImportScenariosTest extends KernelTestCase
     private function catalogue(): void
     {
         $entityManager = $this->entityManager();
-        $currency = new Currency();
-        $currency->setCode('EUR');
-        $locale = new Locale();
-        $locale->setCode('en_US');
+        // The CI loads the fixtures of Sylius into the database: the currency and the locale may exist already.
+        $currency = $entityManager->getRepository(Currency::class)->findOneBy(['code' => 'EUR']) ?? $this->currency();
+        $locale = $entityManager->getRepository(Locale::class)->findOneBy(['code' => 'en_US']) ?? $this->locale();
         $entityManager->persist($currency);
         $entityManager->persist($locale);
-        foreach (['WEB', 'B2B'] as $code) {
+        foreach (['ERP_WEB', 'ERP_B2B'] as $code) {
             $channel = new Channel();
             $channel->setCode($code);
             $channel->setName($code);
@@ -143,13 +142,13 @@ final class ImportScenariosTest extends KernelTestCase
             $entityManager->persist($channel);
         }
         $product = new Product();
-        $product->setCode('MUG');
+        $product->setCode('ERP-MUG');
         $product->setCurrentLocale('en_US');
         $product->setFallbackLocale('en_US');
-        $product->setName('Mug');
-        $product->setSlug('mug');
+        $product->setName('ERP mug');
+        $product->setSlug('erp-mug');
         $variant = new ProductVariant();
-        $variant->setCode('MUG-RED');
+        $variant->setCode('ERP-MUG-RED');
         $variant->setProduct($product);
         $variant->setCurrentLocale('en_US');
         $variant->setFallbackLocale('en_US');
@@ -160,6 +159,22 @@ final class ImportScenariosTest extends KernelTestCase
     }
 
     /** @return FactoryInterface<ChannelPricingInterface> */
+    private function currency(): Currency
+    {
+        $currency = new Currency();
+        $currency->setCode('EUR');
+
+        return $currency;
+    }
+
+    private function locale(): Locale
+    {
+        $locale = new Locale();
+        $locale->setCode('en_US');
+
+        return $locale;
+    }
+
     private function factory(): FactoryInterface
     {
         $factory = self::getContainer()->get('sylius.factory.channel_pricing');
