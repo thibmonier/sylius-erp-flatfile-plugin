@@ -158,7 +158,6 @@ final class ImportScenariosTest extends KernelTestCase
         $entityManager->clear();
     }
 
-    /** @return FactoryInterface<ChannelPricingInterface> */
     private function currency(): Currency
     {
         $currency = new Currency();
@@ -175,6 +174,7 @@ final class ImportScenariosTest extends KernelTestCase
         return $locale;
     }
 
+    /** @return FactoryInterface<ChannelPricingInterface> */
     private function factory(): FactoryInterface
     {
         $factory = self::getContainer()->get('sylius.factory.channel_pricing');
